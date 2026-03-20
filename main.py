@@ -1,78 +1,75 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, Float, String, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 Base = declarative_base()
 
-class Usuario(Base):
-    __tablename__ = "usuarios"
+class Departamento(Base):
+    __tablename__ = "departamentos"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nome = Column(String(100), nullable=False)
 
-    #relacionamento
-    pedidos = relationship("Pedido", back_populates="usuario")
+    funcionarios = relationship("Funcionario", back_populates="departamento")
 
     def __init__(self, nome):
         self.nome = nome
 
+    #Função para imprimir
     def __repr__(self):
-        return f"Usuario = id={self.id} - nome={self.nome}"
-    
-class Pedido(Base):
-    __tablename__ = "pedidos"
+        return f"Departamento: id={self.id} - nome={self.nome}"
+
+class Funcionario(Base):
+    __tablename__ = "funcionarios"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    produto = Column(String(100), nullable=False)
+    nome = Column(String(100), nullable=False)
+    cargo = Column(String(100), nullable=False)
+    salario = Column(Float, nullable=False)
 
-    #Chave estrangeira
-    # Onde tem o foreing key, tem o relacionamento muitos para um (muitos pedidos para um usuario)
-    # Relacionamento aberto
+    departamento_id = Column(Integer, ForeignKey("departamentos.id"))
 
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    #Relacionamento
+    departamento = relationship("Departamento", back_populates="funcionarios")
 
-    # Relacionamento
-    usuario = relationship("Usuario", back_populates="pedidos")
+    def __init__(self, nome, cargo, salario, departamento):
+        self.nome = nome
+        self.cargo = cargo
+        self.salario = salario
+        self.departamento = departamento
 
-    def __init__(self, produto):
-        self.produto = produto
-
+    #Função para imprimir
     def __repr__(self):
-        return f"Pedido = id={self.id} - Produto={self.produto}"
-    
-engine = create_engine("sqlite:///loja.db")
+        return f"Funcionarios =  id={self.id} - nome={self.nome} - cargo={self.cargo}"
+
+
+engine = create_engine("sqlite:///empresa.db")
 
 Base.metadata.create_all(engine)
 
 Session = sessionmaker(bind=engine)
 
+
 with Session() as session:
-    #Criando um objeto
-    usuario1 = Usuario("Pablo")
+    try:
+        #Criando os departamentos
+        ti = Departamento(nome="Tecnicos de T.I")
+        financeiro = Departamento(nome="Financeiro")
 
-    #Criando os pedidos
-    pedido1 = Pedido("Helicoptero")
-    pedido2 = Pedido("Mobilia de rodinha")
-    pedido3 = Pedido("Nota Fiscal")
+        #Duas formas de associoar os funcionarios no departamento
+        # Opção 1
+        func1 = Funcionario("Pablo", "Dev Front-end", 2.00)
+        ti.funcionarios.append(func1)
 
-    #Associando pedidos aos usuarios
-    usuario1.pedidos.append(pedido1)
-    usuario1.pedidos.append(pedido2)
-    usuario1.pedidos.append(pedido3)
+        # Opção 2
+        func2 = Funcionario(nome="Gustavo", cargo="Dev Back-end", salario=20.000, departamento=ti)
+        func3 = Funcionario("Ana Luiza", "Dev Full-stack", 31.00, departamento=ti)
+        func4 = Funcionario("Yasmin", "Gerente Financeiro", 12.00, departamento=financeiro)
 
-    #Salvar no banco
-    session.add(usuario1)
-    session.commit()
-
-    #Buscar todos os usuarios no banco:
-    usuarios = session.query(Usuario).all()
-
-    for user in usuarios:
-        print(user)
-
-    #Pegando os pedidos
-    print(f"Pedidos do usuario 1: {usuarios[0].pedidos}")
-
-    for user in usuarios:
-        print(f"\nUsuarios: {user.nome}")
-        for pedido in user:
-            print(f"Pedido: {user.produto}")
+        session.add(ti)
+        session.add(financeiro)
+        session.commit()
+        print(f"Departamentos e funcionarios inseridos!")
+   
+    except Exception as erro:
+        session.rollback()
+        print(f"Ocorreu um erro {erro}")
